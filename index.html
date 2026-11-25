@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perplexity Explorer</title>
+  <style>
+    /* ==========================================================
+       CSS STYLES - DARK THEME
+       Sleek dark theme with glowing pink & purple accents
+       ========================================================== */
+    :root {
+      --bg: #090d16;
+      --card-bg: #121826;
+      --card-border: #1e293b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --purple: #9333ea;
+      --pink: #ec4899;
+      --pink-glow: #f472b6;
+      --border: #1e293b;
+      --input-bg: #0a0e17;
+      --input-border: #243047;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(147, 51, 234, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 32px 16px;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Fullscreen canvas for wandering pink butterflies */
+    #butterfly-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none; /* Let all mouse clicks pass straight through */
+      z-index: 999;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Page Header */
+    header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    header h1 {
+      font-size: 2.35rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 2px 8px rgba(236, 72, 153, 0.25));
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    /* Dark Theme Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #a5b4fc;
+    }
+
+    .badge-simulated {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    /* Form & Input Elements */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text-main);
+      background: var(--input-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--pink-glow);
+      box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #9333ea 50%, #ec4899 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #273549;
+      border-color: #475569;
+    }
+
+    .btn-preset {
+      background: rgba(147, 51, 234, 0.12);
+      color: #f472b6;
+      border: 1px solid rgba(244, 114, 182, 0.25);
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      transition: all 0.15s;
+    }
+
+    .btn-preset:hover {
+      background: rgba(236, 72, 153, 0.2);
+      border-color: rgba(244, 114, 182, 0.5);
+      color: #fbcfe8;
+      transform: translateY(-1px);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.28);
+      border-color: rgba(239, 68, 68, 0.6);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Status & Alerts */
+    .status-line {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-line.loading {
+      color: #a5b4fc;
+      font-weight: 500;
+    }
+
+    .status-line.ready {
+      color: #4ade80;
+      font-weight: 500;
+    }
+
+    .status-line.error {
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    .error-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background-color: rgba(239, 68, 68, 0.12);
+      border: 1px solid #ef4444;
+      border-radius: var(--radius-md);
+      color: #fca5a5;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      background-color: #161f33;
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 11px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: #e2e8f0;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .token-chip {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: rgba(244, 114, 182, 0.12);
+      color: #f9a8d4;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(244, 114, 182, 0.3);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    /* Steps Cards */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .step-box {
+      background: #161f33;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .step-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #c084fc;
+      margin-bottom: 8px;
+    }
+
+    .step-content {
+      font-size: 0.95rem;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+
+    .step-box.highlight {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+      border-color: rgba(244, 114, 182, 0.4);
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.15);
+    }
+
+    .perplexity-large {
+      font-size: 2.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7 0%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.1;
+      margin-top: 4px;
+      filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.35));
+    }
+
+    /* Prediction Bars (Section 3) */
+    .prediction-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .pred-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: #161f33;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .pred-row.top-pred {
+      background: rgba(236, 72, 153, 0.1);
+      border-color: rgba(244, 114, 182, 0.45);
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.15);
+    }
+
+    .pred-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .pred-token {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .top-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ec4899, #9333ea);
+      color: white;
+      padding: 1px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      box-shadow: 0 0 8px rgba(236, 72, 153, 0.5);
+    }
+
+    .pred-pct {
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #a855f7);
+      border-radius: 999px;
+      transition: width 0.3s ease-out;
+    }
+
+    .top-pred .progress-bar {
+      background: linear-gradient(90deg, #9333ea, #ec4899);
+      box-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+    }
+
+    /* Section 4 styling */
+    .simulated-table input[type="text"],
+    .simulated-table input[type="number"] {
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+    }
+
+    .formula-note {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .empty-placeholder {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 30px 16px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fullscreen canvas for wandering pink butterflies -->
+  <canvas id="butterfly-canvas"></canvas>
+
+  <div class="container">
+
+    <!-- PAGE HEADER -->
+    <header>
+      <h1>Perplexity Explorer</h1>
+      <p>Explore how language models calculate token probabilities and perplexity</p>
+    </header>
+
+    <!-- ==========================================================
+         SECTION 1: TYPE A SENTENCE
+         ========================================================== -->
+    <section class="card" id="section-1">
+      <h2>Section 1 – Type a sentence</h2>
+
+      <div class="input-group">
+        <label for="sentence-input" style="font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
+          Sentence to evaluate:
+        </label>
+        <textarea id="sentence-input" rows="2">I love Python</textarea>
+
+        <!-- Sample preset buttons -->
+        <div class="btn-group">
+          <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">Samples:</span>
+          <button type="button" class="btn btn-preset sample-btn" data-text="I love Python">“I love Python”</button>
+          <button type="button" class="btn btn-preset sample-btn" data-text="Python love I">“Python love I”</button>
+          <button type="button" class="btn btn-preset sample-btn" data-text="The capital of France is Paris">“The capital of France is Paris”</button>
+        </div>
+
+        <!-- Action button -->
+        <div style="margin-top: 8px;">
+          <button type="button" id="calc-btn" class="btn btn-primary">
+            Calculate perplexity
+          </button>
+        </div>
+
+        <!-- Status line -->
+        <div id="status-line" class="status-line">
+          Click “Calculate perplexity” to load the model and calculate.
+        </div>
+
+        <!-- Red error alert box (hidden by default) -->
+        <div id="error-box" class="error-box"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================================
+         SECTION 2: PROBABILITY OF EACH TOKEN -> PERPLEXITY
+         ========================================================== -->
+    <section class="card" id="section-2">
+      <h2>Section 2 – Probability of each token → perplexity</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Spaces in tokens are shown as <span class="token-chip">␣</span>. Each token’s probability is conditioned on all preceding tokens.
+      </p>
+
+      <div class="table-responsive">
+        <table id="model-tokens-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th>Token</th>
+              <th>Probability P</th>
+              <th>1 / P</th>
+            </tr>
+          </thead>
+          <tbody id="model-tokens-tbody">
+            <tr>
+              <td colspan="4" class="empty-placeholder">No calculation yet. Run Section 1 above to view token probabilities.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 3 Steps Breakdown -->
+      <div class="steps-grid" id="model-steps">
+        <!-- Step 1 -->
+        <div class="step-box">
+          <div class="step-title">Step 1</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 4px;">Multiply all 1/P values</div>
+            <div id="model-step-1" class="mono" style="font-size: 0.85rem; color: var(--text-muted);">—</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-box">
+          <div class="step-title">Step 2</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 4px;">Number of tokens (N)</div>
+            <div id="model-step-2" class="mono" style="font-size: 1.25rem; font-weight: 700;">—</div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-box highlight">
+          <div class="step-title">Step 3</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 2px;">Perplexity = (product)<sup>1/N</sup></div>
+            <div id="model-step-3" class="perplexity-large">—</div>
+            <div class="formula-note" id="model-formula-note">Calculated with logs: exp(average of −ln P)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================
+         SECTION 3: WHAT DOES THE MODEL PREDICT NEXT?
+         ========================================================== -->
+    <section class="card" id="section-3">
+      <h2>Section 3 – What does the model predict next?</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Top 8 candidates predicted by the model for the next token, derived from the final position logits.
+      </p>
+
+      <div id="predictions-container">
+        <div class="empty-placeholder">Run Section 1 above to inspect model predictions for the next word.</div>
+      </div>
+    </section>
+
+    <!-- ==========================================================
+         SECTION 4: TRY IT BY HAND (SIMULATED)
+         ========================================================== -->
+    <section class="card" id="section-4">
+      <h2>
+        Section 4 – Try it by hand
+        <span class="badge badge-simulated">Simulated, not from the model</span>
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
+        Test the mathematical calculation directly. Enter hypothetical tokens and their probabilities to see how perplexity responds live.
+      </p>
+
+      <!-- Preset buttons -->
+      <div class="btn-group" style="margin-bottom: 16px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 4px;">Presets:</span>
+        <button type="button" class="btn btn-preset" id="preset-python">“I love Python” (0.5, 0.8, 0.2)</button>
+        <button type="button" class="btn btn-preset" id="preset-eighths">“All 1/8” (8 tokens at 0.125)</button>
+        <button type="button" class="btn btn-preset" id="preset-surprising">“One surprising word” (0.9, 0.9, 0.9, 0.01)</button>
+      </div>
+
+      <!-- Editable rows table -->
+      <div class="table-responsive">
+        <table class="simulated-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th>Token Name</th>
+              <th style="width: 200px;">Probability P</th>
+              <th style="width: 140px;">1 / P</th>
+              <th style="width: 90px; text-align: center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="manual-rows-tbody">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button type="button" id="add-token-btn" class="btn btn-secondary btn-sm">
+          + Add token
+        </button>
+      </div>
+
+      <!-- 3 Steps Breakdown for Section 4 -->
+      <div class="steps-grid" style="margin-top: 24px;">
+        <!-- Step 1 -->
+        <div class="step-box">
+          <div class="step-title">Step 1</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 4px;">Multiply all 1/P values</div>
+            <div id="manual-step-1" class="mono" style="font-size: 0.85rem; color: var(--text-muted);">—</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-box">
+          <div class="step-title">Step 2</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 4px;">Number of tokens (N)</div>
+            <div id="manual-step-2" class="mono" style="font-size: 1.25rem; font-weight: 700;">—</div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-box highlight">
+          <div class="step-title">Step 3</div>
+          <div class="step-content">
+            <div style="font-weight: 600; margin-bottom: 2px;">Perplexity = (product)<sup>1/N</sup></div>
+            <div id="manual-step-3" class="perplexity-large">—</div>
+            <div class="formula-note">Calculated with logs: exp(average of −ln P)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==========================================================
+       PINK BUTTERFLIES ANIMATION (CANVAS)
+       Gentle, graceful pink butterflies wandering smoothly across screen
+       ========================================================== -->
+  <script>
+    // Butterfly canvas setup
+    const canvas = document.getElementById("butterfly-canvas");
+    const ctx = canvas.getContext("2d");
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener("resize", () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    // Pretty pink color palettes for butterflies
+    const pinkShades = [
+      { fill1: "#ff70a6", fill2: "#ff9770", glow: "#f472b6" },
+      { fill1: "#f472b6", fill2: "#ec4899", glow: "#f43f5e" },
+      { fill1: "#fb7185", fill2: "#f43f5e", glow: "#fb7185" },
+      { fill1: "#f43f5e", fill2: "#fda4af", glow: "#fbcfe8" },
+      { fill1: "#f472b6", fill2: "#c084fc", glow: "#e879f9" }
+    ];
+
+    // Butterfly class
+    class Butterfly {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(initial = false) {
+        this.x = Math.random() * width;
+        this.y = initial ? Math.random() * height : (Math.random() < 0.5 ? -30 : height + 30);
+        this.size = 10 + Math.random() * 8; // Little, delicate butterflies (10-18px)
+        this.speed = 1.2 + Math.random() * 1.4;
+        this.angle = Math.random() * Math.PI * 2;
+        this.targetAngle = this.angle;
+        this.angleChangeTimer = 0;
+        this.wingPhase = Math.random() * Math.PI * 2;
+        this.wingSpeed = 0.25 + Math.random() * 0.15; // Wing flapping speed
+        this.color = pinkShades[Math.floor(Math.random() * pinkShades.length)];
+        this.alpha = 0.75 + Math.random() * 0.25;
+        this.flutterWave = Math.random() * 100;
+      }
+
+      update() {
+        // Wandering logic: smoothly change target heading
+        this.angleChangeTimer++;
+        if (this.angleChangeTimer > 40 + Math.random() * 60) {
+          this.targetAngle += (Math.random() - 0.5) * 1.5;
+          this.angleChangeTimer = 0;
+        }
+
+        // Steer butterfly gently towards targetAngle
+        let diff = this.targetAngle - this.angle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        this.angle += diff * 0.05;
+
+        // Slight fluttering wave perpendicular to flight direction
+        this.flutterWave += 0.1;
+        const sideFlutter = Math.sin(this.flutterWave) * 0.6;
+
+        this.x += Math.cos(this.angle) * this.speed - Math.sin(this.angle) * sideFlutter;
+        this.y += Math.sin(this.angle) * this.speed + Math.cos(this.angle) * sideFlutter;
+
+        // Wing flapping cycle
+        this.wingPhase += this.wingSpeed;
+
+        // Seamless wrap around edges with buffer
+        const margin = 50;
+        if (this.x < -margin) this.x = width + margin;
+        if (this.x > width + margin) this.x = -margin;
+        if (this.y < -margin) this.y = height + margin;
+        if (this.y > height + margin) this.y = -margin;
+      }
+
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle + Math.PI / 2); // Orient forward along travel direction
+
+        // Wing perspective scale: simulate flapping 3D depth
+        const wingScaleX = Math.abs(Math.cos(this.wingPhase));
+
+        // Soft pink glow
+        ctx.shadowColor = this.color.glow;
+        ctx.shadowBlur = 10;
+        ctx.globalAlpha = this.alpha;
+
+        const s = this.size;
+
+        // Draw left wings
+        ctx.save();
+        ctx.scale(wingScaleX, 1);
+        ctx.fillStyle = this.color.fill1;
+
+        // Upper left wing
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-s * 1.3, -s * 1.4, -s * 1.7, -s * 0.4, -s * 0.8, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lower left wing
+        ctx.fillStyle = this.color.fill2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-s * 1.1, s * 0.3, -s * 1.2, s * 1.1, -s * 0.3, s * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Draw right wings
+        ctx.save();
+        ctx.scale(-wingScaleX, 1);
+        ctx.fillStyle = this.color.fill1;
+
+        // Upper right wing
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-s * 1.3, -s * 1.4, -s * 1.7, -s * 0.4, -s * 0.8, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lower right wing
+        ctx.fillStyle = this.color.fill2;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(-s * 1.1, s * 0.3, -s * 1.2, s * 1.1, -s * 0.3, s * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Draw slender butterfly body
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s * 0.12, s * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tiny antennae
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(-1, -s * 0.4);
+        ctx.quadraticCurveTo(-s * 0.3, -s * 0.8, -s * 0.4, -s * 0.9);
+        ctx.moveTo(1, -s * 0.4);
+        ctx.quadraticCurveTo(s * 0.3, -s * 0.8, s * 0.4, -s * 0.9);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    // Spawn 16 pink butterflies
+    const butterflies = Array.from({ length: 16 }, () => new Butterfly());
+
+    // Faint pink sparkle dust motes
+    const sparkles = [];
+    function addSparkle(x, y, color) {
+      if (Math.random() < 0.25) {
+        sparkles.push({
+          x: x + (Math.random() - 0.5) * 8,
+          y: y + (Math.random() - 0.5) * 8,
+          radius: 0.8 + Math.random() * 1.2,
+          color: color,
+          alpha: 0.8,
+          decay: 0.02 + Math.random() * 0.02
+        });
+      }
+    }
+
+    // Main animation loop
+    function animateButterflies() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Update and draw sparkles
+      for (let i = sparkles.length - 1; i >= 0; i--) {
+        const sp = sparkles[i];
+        sp.alpha -= sp.decay;
+        if (sp.alpha <= 0) {
+          sparkles.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = sp.alpha;
+        ctx.fillStyle = sp.color;
+        ctx.shadowColor = sp.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Update and draw butterflies
+      for (const b of butterflies) {
+        b.update();
+        b.draw(ctx);
+        addSparkle(b.x, b.y, b.color.glow);
+      }
+
+      requestAnimationFrame(animateButterflies);
+    }
+
+    // Start butterfly animation
+    animateButterflies();
+  </script>
+
+  <!-- ==========================================================
+       JAVASCRIPT MODULE
+       Loads Transformers.js, runs distilgpt2, and computes perplexity
+       ========================================================== -->
+  <script type="module">
+    // Import AutoTokenizer, AutoModelForCausalLM, and Tensor from HuggingFace Transformers.js
+    import { AutoTokenizer, AutoModelForCausalLM, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+
+    // References to Section 1 UI elements
+    const sentenceInput = document.getElementById("sentence-input");
+    const calcBtn = document.getElementById("calc-btn");
+    const statusLine = document.getElementById("status-line");
+    const errorBox = document.getElementById("error-box");
+    const sampleBtns = document.querySelectorAll(".sample-btn");
+
+    // References to Section 2 UI elements
+    const modelTokensTbody = document.getElementById("model-tokens-tbody");
+    const modelStep1 = document.getElementById("model-step-1");
+    const modelStep2 = document.getElementById("model-step-2");
+    const modelStep3 = document.getElementById("model-step-3");
+
+    // Reference to Section 3 UI elements
+    const predictionsContainer = document.getElementById("predictions-container");
+
+    // State for the model & tokenizer (loaded only on first button click)
+    let tokenizer = null;
+    let model = null;
+    let isModelLoading = false;
+
+    // Helper: display red error message clearly
+    function showError(message) {
+      errorBox.style.display = "block";
+      errorBox.textContent = message;
+      statusLine.className = "status-line error";
+      statusLine.textContent = "Error occurred while loading or running the model.";
+    }
+
+    // Helper: hide error box
+    function clearError() {
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+    }
+
+    // Helper: stable softmax to avoid numerical overflow
+    // P_i = exp(logit_i - max_logit) / sum(exp(logit_j - max_logit))
+    function computeStableSoftmax(logitsArray, startOffset, length) {
+      // 1. Find the maximum logit
+      let maxLogit = -Infinity;
+      for (let i = 0; i < length; i++) {
+        const val = logitsArray[startOffset + i];
+        if (val > maxLogit) maxLogit = val;
+      }
+
+      // 2. Compute exponentials and sum
+      const expValues = new Float64Array(length);
+      let sumExp = 0;
+      for (let i = 0; i < length; i++) {
+        const e = Math.exp(logitsArray[startOffset + i] - maxLogit);
+        expValues[i] = e;
+        sumExp += e;
+      }
+
+      // 3. Normalize into probabilities
+      const probabilities = new Float64Array(length);
+      for (let i = 0; i < length; i++) {
+        probabilities[i] = expValues[i] / sumExp;
+      }
+
+      return probabilities;
+    }
+
+    // Helper: calculate perplexity safely using logarithms to prevent overflow
+    // perplexity = exp( average of -ln(P) )
+    function calculatePerplexityFromProbs(probs) {
+      const N = probs.length;
+      if (N === 0) return { perplexity: 0, N: 0, avgNegLn: 0, multText: "—" };
+
+      let sumNegLn = 0;
+      const oneOverPValues = [];
+
+      for (let i = 0; i < N; i++) {
+        const p = probs[i];
+        // Clamp tiny probabilities to avoid ln(0) or division by zero
+        const safeP = Math.max(p, 1e-15);
+        sumNegLn += -Math.log(safeP);
+        oneOverPValues.push(1 / safeP);
+      }
+
+      const avgNegLn = sumNegLn / N;
+      const perplexity = Math.exp(avgNegLn);
+
+      // Build readable Step 1 multiplication string
+      const formattedFactors = oneOverPValues.map(v => {
+        if (v >= 1e6 || v < 0.001) return v.toExponential(2);
+        return Number.isInteger(v) ? v.toString() : v.toFixed(2);
+      });
+
+      // Product can be represented as exp(sumNegLn)
+      let productDisplay;
+      if (sumNegLn > 700) {
+        // Exceeds standard float64 limit (~1e308), format as power of 10
+        const log10Val = sumNegLn / Math.LN10;
+        const exponent = Math.floor(log10Val);
+        const mantissa = Math.pow(10, log10Val - exponent);
+        productDisplay = `${mantissa.toFixed(2)} × 10^${exponent}`;
+      } else {
+        const prod = Math.exp(sumNegLn);
+        if (prod >= 1e6) {
+          productDisplay = prod.toExponential(3);
+        } else {
+          productDisplay = Number.isInteger(Math.round(prod * 100) / 100) ? Math.round(prod).toString() : prod.toFixed(2);
+        }
+      }
+
+      const multText = `${formattedFactors.join(" × ")} = ${productDisplay}`;
+
+      return {
+        perplexity,
+        N,
+        multText,
+        oneOverPValues
+      };
+    }
+
+    // Load the distilgpt2 model and tokenizer
+    async function loadModelIfNeeded() {
+      if (model && tokenizer) return true;
+      if (isModelLoading) return false;
+
+      isModelLoading = true;
+      clearError();
+      statusLine.className = "status-line loading";
+      statusLine.textContent = "Downloading the model… (Xenova/distilgpt2, ~80MB, only downloaded once)";
+
+      try {
+        // Progress callback to inform the user during download
+        const progressCallback = (info) => {
+          if (info.status === "progress" && info.total) {
+            const pct = Math.round((info.loaded / info.total) * 100);
+            statusLine.textContent = `Downloading ${info.file || "model"} (${pct}%)…`;
+          } else if (info.status === "loading") {
+            statusLine.textContent = `Loading ${info.file || "model"} into memory…`;
+          }
+        };
+
+        // Load tokenizer
+        tokenizer = await AutoTokenizer.from_pretrained("Xenova/distilgpt2", {
+          progress_callback: progressCallback
+        });
+
+        // Load causal language model quantized to 8-bit integers (q8)
+        model = await AutoModelForCausalLM.from_pretrained("Xenova/distilgpt2", {
+          dtype: "q8",
+          progress_callback: progressCallback
+        });
+
+        statusLine.className = "status-line ready";
+        statusLine.textContent = "Model ready";
+        isModelLoading = false;
+        return true;
+      } catch (err) {
+        isModelLoading = false;
+        showError(`Failed to load model: ${err.message || err}`);
+        return false;
+      }
+    }
+
+    // Main function: evaluate sentence with distilgpt2 and compute perplexity
+    async function evaluateSentence() {
+      const sentence = sentenceInput.value.trim();
+      if (!sentence) {
+        showError("Please enter a sentence to evaluate.");
+        return;
+      }
+
+      // Ensure model is loaded (only on first click)
+      const loaded = await loadModelIfNeeded();
+      if (!loaded) return;
+
+      clearError();
+      calcBtn.disabled = true;
+      statusLine.className = "status-line loading";
+      statusLine.textContent = "Evaluating sentence with language model…";
+
+      try {
+        // 1. Tokenize sentence into token IDs
+        let rawEncoded = tokenizer.encode(sentence);
+        if (rawEncoded instanceof Promise) rawEncoded = await rawEncoded;
+
+        let tokenIds = [];
+        if (Array.isArray(rawEncoded)) {
+          tokenIds = rawEncoded;
+        } else if (rawEncoded && rawEncoded.data) {
+          tokenIds = Array.from(rawEncoded.data);
+        } else if (ArrayBuffer.isView(rawEncoded)) {
+          tokenIds = Array.from(rawEncoded);
+        } else {
+          // Fallback if encode returned a dictionary
+          const tokenized = await tokenizer(sentence);
+          tokenIds = Array.from(tokenized.input_ids.data);
+        }
+        tokenIds = tokenIds.map(Number);
+
+        if (tokenIds.length === 0) {
+          throw new Error("No tokens produced for the given sentence.");
+        }
+
+        // 2. Prepend start marker 50256 (<|endoftext|>) so the first word also gets a probability
+        // Shape of sequence: [50256, token_1, token_2, ..., token_N]
+        const allIds = [50256, ...tokenIds];
+        const seqLen = allIds.length; // n
+
+        // 3. Create input tensor and run model forward pass
+        const input_ids = new Tensor("int64", new BigInt64Array(allIds.map(BigInt)), [1, seqLen]);
+        const attention_mask = new Tensor("int64", new BigInt64Array(seqLen).fill(1n), [1, seqLen]);
+
+        const output = await model({ input_ids, attention_mask });
+        const logits = output.logits; // shape [1, n, vocabulary]
+        const vocabSize = logits.dims[2];
+        const logitsData = logits.data;
+
+        // 4. Compute probability for each real token
+        // For token at index k (0 to tokenIds.length - 1):
+        // Its preceding position in allIds is k (where allIds[0] is 50256).
+        // Logits at position k predict the token at position k + 1.
+        const tokenResults = [];
+        const probs = [];
+
+        for (let i = 0; i < tokenIds.length; i++) {
+          const targetTokenId = tokenIds[i];
+          const precedingPosition = i;
+          const logitsOffset = precedingPosition * vocabSize;
+
+          // Stable softmax over all vocabulary logits at position precedingPosition
+          const positionProbs = computeStableSoftmax(logitsData, logitsOffset, vocabSize);
+          const prob = positionProbs[targetTokenId];
+          probs.push(prob);
+
+          // Decode token text and replace spaces with open box symbol ␣
+          let decoded = tokenizer.decode([targetTokenId]);
+          if (decoded instanceof Promise) decoded = await decoded;
+          const displayToken = decoded.replace(/ /g, "␣");
+
+          tokenResults.push({
+            id: targetTokenId,
+            displayToken: displayToken,
+            prob: prob,
+            oneOverP: 1 / Math.max(prob, 1e-15)
+          });
+        }
+
+        // 5. Compute perplexity using the log formula
+        const { perplexity, N, multText } = calculatePerplexityFromProbs(probs);
+
+        // 6. Render Section 2 table
+        modelTokensTbody.innerHTML = "";
+        tokenResults.forEach((item, idx) => {
+          const tr = document.createElement("tr");
+
+          const pDisplay = item.prob < 0.0001 ? item.prob.toExponential(3) : item.prob.toFixed(4);
+          const oneOverPDisplay = item.oneOverP >= 1e6 ? item.oneOverP.toExponential(2) : item.oneOverP.toFixed(2);
+
+          tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td><span class="token-chip">${escapeHtml(item.displayToken)}</span></td>
+            <td class="mono">${pDisplay}</td>
+            <td class="mono">${oneOverPDisplay}</td>
+          `;
+          modelTokensTbody.appendChild(tr);
+        });
+
+        // 7. Render Section 2 three steps
+        modelStep1.textContent = multText;
+        modelStep2.textContent = N.toString();
+
+        const roundedModelPpl = Math.round(perplexity);
+        if (Math.abs(perplexity - roundedModelPpl) < 1e-9) {
+          modelStep3.textContent = roundedModelPpl.toString();
+        } else {
+          modelStep3.textContent = perplexity.toFixed(2);
+        }
+
+        // 8. Section 3: Predict top 8 next tokens from logits at the last position
+        const lastPosition = seqLen - 1;
+        const lastOffset = lastPosition * vocabSize;
+        const nextTokenProbs = computeStableSoftmax(logitsData, lastOffset, vocabSize);
+
+        // Find top 8 token IDs with highest probability
+        const candidateList = [];
+        for (let v = 0; v < vocabSize; v++) {
+          candidateList.push({ id: v, prob: nextTokenProbs[v] });
+        }
+        candidateList.sort((a, b) => b.prob - a.prob);
+        const top8 = candidateList.slice(0, 8);
+
+        // Decode candidate tokens
+        predictionsContainer.innerHTML = "";
+        const predListEl = document.createElement("div");
+        predListEl.className = "prediction-list";
+
+        for (let idx = 0; idx < top8.length; idx++) {
+          const item = top8[idx];
+          let decoded = tokenizer.decode([item.id]);
+          if (decoded instanceof Promise) decoded = await decoded;
+          const displayToken = decoded.replace(/ /g, "␣");
+          const pct = (item.prob * 100).toFixed(2);
+
+          const isTop = idx === 0;
+          const rowEl = document.createElement("div");
+          rowEl.className = `pred-row ${isTop ? "top-pred" : ""}`;
+          rowEl.innerHTML = `
+            <div class="pred-header">
+              <div class="pred-token">
+                <span class="token-chip">${escapeHtml(displayToken)}</span>
+                ${isTop ? '<span class="top-badge">Top 1</span>' : ""}
+              </div>
+              <div class="pred-pct">${pct}%</div>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" style="width: ${pct}%;"></div>
+            </div>
+          `;
+          predListEl.appendChild(rowEl);
+        }
+        predictionsContainer.appendChild(predListEl);
+
+        statusLine.className = "status-line ready";
+        statusLine.textContent = "Calculation complete!";
+      } catch (err) {
+        showError(`Execution error: ${err.message || err}`);
+      } finally {
+        calcBtn.disabled = false;
+      }
+    }
+
+    // Helper to sanitize HTML characters
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Event listeners for Section 1
+    calcBtn.addEventListener("click", () => {
+      evaluateSentence();
+    });
+
+    sampleBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        sentenceInput.value = btn.getAttribute("data-text");
+        evaluateSentence();
+      });
+    });
+
+    // ==========================================================
+    // SECTION 4: TRY IT BY HAND (SIMULATED)
+    // Works immediately with no model download needed
+    // ==========================================================
+    const manualTbody = document.getElementById("manual-rows-tbody");
+    const addTokenBtn = document.getElementById("add-token-btn");
+    const manualStep1 = document.getElementById("manual-step-1");
+    const manualStep2 = document.getElementById("manual-step-2");
+    const manualStep3 = document.getElementById("manual-step-3");
+
+    const presetPythonBtn = document.getElementById("preset-python");
+    const presetEighthsBtn = document.getElementById("preset-eighths");
+    const presetSurprisingBtn = document.getElementById("preset-surprising");
+
+    // Section 4 state: list of simulated tokens
+    let simulatedTokens = [
+      { name: "I", prob: 0.5 },
+      { name: "love", prob: 0.8 },
+      { name: "Python", prob: 0.2 }
+    ];
+
+    // Render manual rows and recalculate Section 4
+    function renderSimulatedTable() {
+      manualTbody.innerHTML = "";
+
+      simulatedTokens.forEach((item, index) => {
+        const tr = document.createElement("tr");
+
+        const pNum = parseFloat(item.prob);
+        const oneOverP = (!isNaN(pNum) && pNum > 0) ? (1 / pNum) : NaN;
+        const oneOverPText = isNaN(oneOverP)
+          ? "—"
+          : (Number.isInteger(oneOverP) ? oneOverP.toString() : oneOverP.toFixed(4));
+
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td>
+            <input type="text" class="manual-name-input" value="${escapeHtml(item.name)}" placeholder="Token">
+          </td>
+          <td>
+            <input type="number" step="0.001" min="0.0001" max="1" class="manual-prob-input" value="${item.prob}" placeholder="e.g. 0.5">
+          </td>
+          <td class="mono row-one-over-p">${oneOverPText}</td>
+          <td style="text-align: center;">
+            <button type="button" class="btn btn-danger btn-sm remove-row-btn" ${simulatedTokens.length <= 1 ? "disabled" : ""}>
+              Remove
+            </button>
+          </td>
+        `;
+
+        // Input listeners for live updates
+        const nameInput = tr.querySelector(".manual-name-input");
+        const probInput = tr.querySelector(".manual-prob-input");
+        const removeBtn = tr.querySelector(".remove-row-btn");
+
+        nameInput.addEventListener("input", (e) => {
+          simulatedTokens[index].name = e.target.value;
+        });
+
+        probInput.addEventListener("input", (e) => {
+          simulatedTokens[index].prob = e.target.value;
+          updateManualCalculations();
+          // Update the specific row 1/P cell
+          const newP = parseFloat(e.target.value);
+          const cell = tr.querySelector(".row-one-over-p");
+          if (!isNaN(newP) && newP > 0) {
+            const v = 1 / newP;
+            cell.textContent = Number.isInteger(v) ? v.toString() : v.toFixed(4);
+          } else {
+            cell.textContent = "—";
+          }
+        });
+
+        removeBtn.addEventListener("click", () => {
+          if (simulatedTokens.length > 1) {
+            simulatedTokens.splice(index, 1);
+            renderSimulatedTable();
+            updateManualCalculations();
+          }
+        });
+
+        manualTbody.appendChild(tr);
+      });
+
+      updateManualCalculations();
+    }
+
+    // Compute perplexity and update the 3 steps for Section 4
+    function updateManualCalculations() {
+      const validProbs = [];
+      for (const item of simulatedTokens) {
+        const p = parseFloat(item.prob);
+        if (!isNaN(p) && p > 0) {
+          validProbs.push(p);
+        }
+      }
+
+      if (validProbs.length === 0) {
+        manualStep1.textContent = "Please enter positive probabilities.";
+        manualStep2.textContent = "0";
+        manualStep3.textContent = "—";
+        return;
+      }
+
+      const { perplexity, N, multText } = calculatePerplexityFromProbs(validProbs);
+
+      manualStep1.textContent = multText;
+      manualStep2.textContent = N.toString();
+
+      // Show formatted perplexity (e.g. 2.32 for "I love Python", 8 for "All 1/8")
+      const rounded = Math.round(perplexity);
+      if (Math.abs(perplexity - rounded) < 1e-9) {
+        manualStep3.textContent = rounded.toString();
+      } else {
+        manualStep3.textContent = perplexity.toFixed(2);
+      }
+    }
+
+    // Add token row
+    addTokenBtn.addEventListener("click", () => {
+      simulatedTokens.push({ name: `token_${simulatedTokens.length + 1}`, prob: 0.5 });
+      renderSimulatedTable();
+    });
+
+    // Preset 1: "I love Python" (0.5, 0.8, 0.2) -> Perplexity = 2.32
+    presetPythonBtn.addEventListener("click", () => {
+      simulatedTokens = [
+        { name: "I", prob: 0.5 },
+        { name: "love", prob: 0.8 },
+        { name: "Python", prob: 0.2 }
+      ];
+      renderSimulatedTable();
+    });
+
+    // Preset 2: "All 1/8" (8 tokens at 0.125) -> Perplexity = 8
+    presetEighthsBtn.addEventListener("click", () => {
+      simulatedTokens = [
+        { name: "token_1", prob: 0.125 },
+        { name: "token_2", prob: 0.125 },
+        { name: "token_3", prob: 0.125 },
+        { name: "token_4", prob: 0.125 },
+        { name: "token_5", prob: 0.125 },
+        { name: "token_6", prob: 0.125 },
+        { name: "token_7", prob: 0.125 },
+        { name: "token_8", prob: 0.125 }
+      ];
+      renderSimulatedTable();
+    });
+
+    // Preset 3: "One surprising word" (0.9, 0.9, 0.9, 0.01)
+    presetSurprisingBtn.addEventListener("click", () => {
+      simulatedTokens = [
+        { name: "The", prob: 0.9 },
+        { name: "capital", prob: 0.9 },
+        { name: "of", prob: 0.9 },
+        { name: "elephant", prob: 0.01 }
+      ];
+      renderSimulatedTable();
+    });
+
+    // Initialize Section 4 immediately on page load
+    renderSimulatedTable();
+  </script>
+</body>
+</html>
